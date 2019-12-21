@@ -1,13 +1,9 @@
 #include <iostream>
 #include <vector>
-#include <cmath>
+#include <iomanip>
 #include <algorithm>
 #include <numeric>	
 #include <string>
-#include <map>
-#include <set>
-#include <charconv>
-
 
 /*For part 1 input num=low range
                    v = high
@@ -40,18 +36,18 @@ bool rules(int num, const int& v) {
 	return (rule1 && rule2);
 }
 
-bool rules2(int num) {
+bool rules2(const std::string& nums) {
 	bool rule1 = false;
 	bool rule2 = false;
 
-	std::string nums = std::to_string(num);
-	std::string numsort = nums;
+	//const auto nums(std::to_string(num));
+	std::string numsort(nums);
 	std::sort(numsort.begin(), numsort.end());
 	if (nums == numsort)
 		rule2 = true;
 
 	for (int i = 0; i < nums.size(); i++) {
-		int c = std::count(nums.begin(), nums.end(), nums[i]);
+		const int c = std::count(nums.begin(), nums.end(), nums[i]);
 		if (c == 2)
 			rule1 = true;
 	}
@@ -59,7 +55,8 @@ bool rules2(int num) {
 	return (rule1 && rule2);
 }
 
-/*workign but rules2 seems to take too long and needs optimizing*/
+/*rules2 takes a very long time in dbug mode only
+compile with g++ -O3 or make release in VS*/
 int main() {
 	const int low = 168630;
 	const int high = 718098;
@@ -75,7 +72,7 @@ int main() {
 	std::cout << "part 2 - 2 adjacent numbers only" << std::endl;
 	int count2 = 0;
 	for (int i = low; i <= high; i++) {
-		if (rules2(i))
+		if (rules2(std::to_string(i)))
 			count2++;
 	}
 	std::cout << "apply rules to obtain " << count2 << " possible passwords=" << std::endl;
