@@ -57,13 +57,12 @@ int mul2(int& a, int& b) {
     return r;
 }
 
-std::vector<int> paramterInstruction(int opcode) {
+std::vector<int> paramterInstruction(int& opcode) {
     std::vector<int> instMode;
-    instMode.push_back(opcode % 100);
-    opcode /= 100;
-    for (int i = 0; i < 3; i++) {
-        instMode.push_back(opcode % 10);
-        opcode /= 10;
+    instMode.push_back(opcode % 10);
+    for (int i = 1; i < 4; i++) {
+        int pmode = std::pow(10, (i + 1));
+        instMode.push_back(opcode / pmode % 10);
     }
     return instMode;
 }
@@ -71,9 +70,6 @@ std::vector<int> paramterInstruction(int opcode) {
 /*intcode conputer processs function - provide copy of data vector
     p1noun and p2verb replace values at p[1] and p[2] */
 int process(std::vector<int>& data, int p1noun, int p2verb) {
-    int pos_mode = 0;//position mode value at pos[op[i]]
-    int imm_mode = 1;//immediate mode value is face op[i]
-
     std::vector<int> opcodes = {
         99, //halt
          1, //add
@@ -81,73 +77,57 @@ int process(std::vector<int>& data, int p1noun, int p2verb) {
          3, //single input
          4  //output
     };
-    std::vector<int> opinstsize = {
+    std::vector<int> opsize = {
             0, //halt
              4, //add
              4, //mul
              2, //single input
              2  //output
     };
-
-    int instructionSize = 4;
     int output = 0;
+    int op;
 
-    alarmState(data, p1noun, p2verb);
+    //alarmState(data, p1noun, p2verb);
     std::vector<int>::iterator positt;
-    for (int i = 0; i < data.size() - instructionSize;) {
-        if (data[i]== 1100 || data[i] == 0) {
-            i++;
-        }
-        positt = std::find(opcodes.begin(), opcodes.end(), data[i]);
-        std::vector<int> dval(5,0);
-        int op = data[i];
+    int i=0;
+    while (i < data.size()){
+        op = data[i];
+        std::vector<int> pval = paramterInstruction(op);
+        op %= 10;
+        positt = std::find(opcodes.begin(), opcodes.end(), op);
         
-        if (op > 9) {
-            std::vector<int> instpam = paramterInstruction(op);
-            op = instpam[0];
-            for (int j = 1; j <= opinstsize[op]; j++) {
-                if (instpam[j] == 0)
-                    dval[j - 1] = data[data[i + j]];
-                if (instpam[j] == 1)
-                    dval[j - 1] = data[i + j];
-            }
-        } else {
-            for (int j = 1; j <= opinstsize[op]; j++) 
-                    dval[j - 1] = data[data[i + j]];
-        }
-            if (positt != opcodes.end()) {
+        if (positt != opcodes.end()) {
             if (op == opcodes[1]) {
-                data[data[opinstsize[op]-1]] = add1(dval[0], dval[1]);
-                i += opinstsize[op];
+                data[data[i+3]] = add1(data[pval[1] ? i + 1 : data[i + 1]], data[pval[2] ? i + 2: data[i + 2]]);
+                i += opsize[op];
             }
             if (op == opcodes[2]) {
-                data[data[i + opinstsize[op] - 1]] = mul2(dval[0], dval[1]);
-                i += opinstsize[op];
+                data[data[i+3]] = mul2(data[pval[1] ? i + 1: data[i+1]], data[pval[2] ? i + 2: data[i+2]]);
+                i += opsize[op];
             }
             if (op == opcodes[3]) {
                 int in;
                 std::cout << "input:";
                 std::cin >> in;
                 data[data[i+1]] = in;
-                i += (opinstsize[op]);
+                i += opsize[op];
             }
             if (op == opcodes[4]) {
-                int out = data[dval[0]];
-                std::cout << "output:" << out << " ";
-                i += (opinstsize[op]);
+                if (data[i + opsize[4]] == 99) {
+                    return data[data[i + 1]];
+                }
+                i += opsize[op];
             }
             if (op == opcodes[0]) {
-                int output = data[0];
-                return output;
-            }
-        }
+                i = data.size() + 1;
+          }
+     }
         else {
             std::cout << "invalid input of opcode expect 1 2 or 99, got :" << data[i] << std::endl;
-            return 0;
+            i += opsize[1];
         }
     }
-    std::cout << "WARN:reached eof with no halt signal : returning 0" << std::endl;
-    return 0;
+    return data[0];
 }
 
 void part2(std::vector<int>& data, const int& target) {
