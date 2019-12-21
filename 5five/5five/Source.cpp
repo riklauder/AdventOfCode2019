@@ -1,21 +1,17 @@
 /*
  Op codes (pos[0]) of each instruction
-   example instruction 1,0,0,3 or 1,0,0,3,99 
-    #99 - halt - program finished
-    #1 adds numbers pos[op[1]]&[op[2]] stores valuein pos[op[3]]
-    #2 multiplies pos[op[1]]&[op[2]] stores product in pos[op[3]]
-    #3 single input stored at pos[op[1]]
+   example instructions 1,0,0,3 or 1,0,0,3,99 
+  Possilble Op Codes (1, 2, 3, 4, 5, 6, 7, 8, 99)
 
-**Part 1 Success output
-    end of program value 99 reached at pos :172
-    Final Val @ pos 0 :5098658
-                    5098658
-**Part 2 Q - determine what pair of inputs produces the output 19690720
-    Answer is 5064 - output:
-    out=target == output above
-5064
+0 = position mode - standard original
+1 = immeditate mode
+RESULT:
+    input TEST ID:1
+    diagnostic code processing: part 1: 2845163
+
+    input TEST ID:5
+    Intcode diagnostic code part 2: 9436229
 */
-
 #include <iostream>
 #include <numeric>	
 #include <algorithm>
@@ -28,6 +24,18 @@
 #include <iomanip>
 #include <string>
 
+/*Op Codes*/
+constexpr auto ADD = 1;      //#1 adds numbers pos[op[1]]&[op[2]] stores valuein pos[op[3]];
+constexpr auto MUL = 2;      //#2 multiplies pos[op[1]]&[op[2]] stores product in pos[op[3]];
+constexpr auto INPUT = 3;    //#3 takes single input stored at pos[op[1]];
+constexpr auto OUTPUT = 4;   //#4 outputs value at op[1];
+constexpr auto JPX = 5;      //#5 jump iff op[1]!=0 to op[2];
+constexpr auto JNPX = 6;     //#6 jump iff op[1]==0 to op[2];
+constexpr auto FIRSTCMP = 7; //#7 if op[1] < op[2] pos[op[3]] = 1 else 0;
+constexpr auto EQUAL = 8;    //#8 equiv op[1]==op[2] pos[op[3]] = 1 else 0;
+constexpr auto HALT = 99;    //#99 - halt - program finished;
+
+/*popuates intput int vector with input from file*/
 void getData(std::vector<int>& d) {
     std::string s;
     std::ifstream file("input.txt");
@@ -38,7 +46,8 @@ void getData(std::vector<int>& d) {
         d.push_back(dd);
     }
 }
-/*replaces position 1 and 2 with the values noun verb 
+
+/*replaces position 1 and 2 with values noun verb 
  input (data vector, noun, verb) */
 void alarmState(std::vector<int>& d, int &noun, int& verb) {
     //std::cout << " pos1:" << d[1] << " changed to noun :" << noun;
@@ -69,86 +78,89 @@ std::vector<int> paramterInstruction(int& opcode) {
 
 /*intcode conputer processs function - provide copy of data vector
     p1noun and p2verb replace values at p[1] and p[2] */
-int process(std::vector<int>& data, int p1noun, int p2verb) {
-    std::vector<int> opcodes = {
-        99, //halt
-         1, //add
-         2, //mul
-         3, //single input
-         4  //output
-    };
+int process(std::vector<int>& data) {
     std::vector<int> opsize = {
-            0, //halt
-             4, //add
-             4, //mul
-             2, //single input
-             2  //output
+             0, 4,  //[0]99-halt//[1]-add 
+             4, 2,  //[2]-mul  //[3]-single input
+             2, 3,  //[4]-output//[5]-jump true
+             3, 4,  //[6]-jump flase//[7]-compare is less
+             4      //[8]-equals
     };
     int output = 0;
     int op;
-
-    //alarmState(data, p1noun, p2verb);
-    std::vector<int>::iterator positt;
     int i=0;
-    while (i < data.size()){
+
+    while (i < data.size()) {
         op = data[i];
         std::vector<int> pval = paramterInstruction(op);
-        op %= 10;
-        positt = std::find(opcodes.begin(), opcodes.end(), op);
-        
-        if (positt != opcodes.end()) {
-            if (op == opcodes[1]) {
-                data[data[i+3]] = add1(data[pval[1] ? i + 1 : data[i + 1]], data[pval[2] ? i + 2: data[i + 2]]);
+        op = pval[0];
+        switch (op) {
+        case ADD:
+            data[data[i + 3]] = add1(data[pval[1] ? i + 1 : data[i + 1]], data[pval[2] ? i + 2 : data[i + 2]]);
+            i += opsize[op];
+            break;
+        case MUL:
+            data[data[i + 3]] = mul2(data[pval[1] ? i + 1 : data[i + 1]], data[pval[2] ? i + 2 : data[i + 2]]);
+            i += opsize[op];
+            break;
+        case INPUT:
+            int in;
+            std::cout << "input TEST ID:";
+            std::cin >> in;
+            data[data[i + 1]] = in;
+            i += opsize[op];
+            break;
+        case OUTPUT:
+            if (data[i + opsize[4]] == 99) {
+                return data[data[i + 1]];
+            }
+            i += opsize[op];
+            break;
+        case JPX:
+            if (data[pval[1] ? i + 1 : data[i + 1]] != 0) {
+                i = data[pval[2] ? i + 2 : data[i + 2]];
+            }
+            else {
                 i += opsize[op];
             }
-            if (op == opcodes[2]) {
-                data[data[i+3]] = mul2(data[pval[1] ? i + 1: data[i+1]], data[pval[2] ? i + 2: data[i+2]]);
+            break;
+        case JNPX:
+            if (data[pval[1] ? i + 1 : data[i + 1]] == 0) {
+                i = data[pval[2] ? i + 2 : data[i + 2]];
+            }
+            else {
                 i += opsize[op];
             }
-            if (op == opcodes[3]) {
-                int in;
-                std::cout << "input:";
-                std::cin >> in;
-                data[data[i+1]] = in;
-                i += opsize[op];
+            break;
+        case FIRSTCMP:
+            if (data[pval[1] ? i + 1 : data[i + 1]] < data[pval[2] ? i + 2 : data[i + 2]]) {
+                data[data[i + 3]] = 1;
             }
-            if (op == opcodes[4]) {
-                if (data[i + opsize[4]] == 99) {
-                    return data[data[i + 1]];
-                }
-                i += opsize[op];
+            else {
+                data[data[i + 3]] = 0;
             }
-            if (op == opcodes[0]) {
-                i = data.size() + 1;
-          }
-     }
-        else {
-            std::cout << "invalid input of opcode expect 1 2 or 99, got :" << data[i] << std::endl;
-            i += opsize[1];
+            i += opsize[op];
+            break;
+        case EQUAL:
+            if (data[pval[1] ? i + 1 : data[i + 1]] == data[pval[2] ? i + 2 : data[i + 2]]) {
+                data[data[i + 3]] = 1;
+            }
+            else {
+                data[data[i + 3]] = 0;
+            }
+            i += opsize[op];
+            break;
+        case HALT:
+            i = data.size() + 1;
+            break;
+        default:
+            i += opsize[op];
+            break;
         }
     }
     return data[0];
 }
 
-void part2(std::vector<int>& data, const int& target) {
-    int noun;
-    int verb;
-    int mxran = 99;
-    int output = -1;
-
-    for (int n = 49; n < mxran; n++) {
-        for (int v = 99; v > 0; v--) {
-            std::vector<int> dt2 = data;
-            output = process(dt2, n, v);
-            if (output == target) {
-                std::cout << "out=target == output above" << std::endl;
-                std::cout << std::setw(2) << std::setfill('0') << n;
-                std::cout << std::setw(2) << std::setfill('0') << v << std::endl;
-                return;
-            }
-        }
-    }
-}
 
 int main() {
     std::vector<int> maindata;
@@ -156,12 +168,11 @@ int main() {
 
     //std::cout << "part 1 output at p[0]" << std::endl;
     std::vector<int> dt = maindata;
-    std::cout << process(dt, maindata[1], maindata[2]) << std::endl;
+    std::cout << "diagnostic code processing: part 1: " << process(dt) << std::endl;
+    std::cout << std::endl;
 
-    //const int target = 19690720;
-    //std::cout << "part 2 target is " << target << std::endl;
+    std::vector<int> dt2 = maindata;
+    std::cout << "Intcode diagnostic code part 2: "<< process(dt2) << std::endl;
     
-    //part2(maindata, target);
-   
 }
 
