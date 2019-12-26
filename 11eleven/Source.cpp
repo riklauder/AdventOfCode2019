@@ -41,7 +41,7 @@ void print_grid(const std::map<Point, long long>& grid)
 }
 
 int main() {
-    vh::IntcodeComputer src;
+    ic::IntcodeComputer src;
     if (!src.load("input.txt")) {
         std::cout << stderr << "Could not open input file\n";
         return EXIT_FAILURE;

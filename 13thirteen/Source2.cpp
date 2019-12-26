@@ -5,7 +5,7 @@ constexpr long long kPaddle = 3;
 constexpr long long kBall = 4;
 
 struct Game {
-    vh::IntcodeComputer src;
+    ic::IntcodeComputer src;
     long long ballx = 0;
     long long paddlex = 0;
     long long joystick = 0;

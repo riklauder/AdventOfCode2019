@@ -39,7 +39,7 @@ constexpr auto HALT = 99;    //#99 - halt - program finished;
 #include <utility>
 //#pragma warning(disable : 4996)
 
-namespace vh {
+namespace ic {
 
     static constexpr long long kModeDiv[] = { 10, 100, 1000, 10000 };
 

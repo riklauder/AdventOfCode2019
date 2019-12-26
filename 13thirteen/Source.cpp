@@ -8,7 +8,7 @@ bool operator==(const Point a, const Point b) { return a.x == b.x && a.y == b.y;
 bool operator<(const Point a, const Point b) { return (a.x != b.x) ? (a.x < b.x) : (a.y < b.y); }
 
 
-void update(const vh::IntcodeComputer& src, std::map<Point, long long>& display)
+void update(const ic::IntcodeComputer& src, std::map<Point, long long>& display)
 {
     for (size_t i = 0, endI = src.out.size(); i < endI; i += 3) {
         Point pos{ src.out[i], src.out[i + 1] };
@@ -24,7 +24,7 @@ void update(const vh::IntcodeComputer& src, std::map<Point, long long>& display)
 
 
 int main() {
-    vh::IntcodeComputer src;
+    ic::IntcodeComputer src;
     if (!src.load("input.txt")) {
         std::cout << stderr << "Could not open input file\n";
         return EXIT_FAILURE;
