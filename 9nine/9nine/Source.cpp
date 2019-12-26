@@ -15,16 +15,22 @@ RESULT:
 #include <iostream>
 #include <numeric>	
 #include <algorithm>
+#include <cmath>
+#include <charconv>
 #include <vector>
+#include <execution>
 #include <fstream>
 #include <sstream>
+#include <numeric>
+#include <optional>
 #include <limits>
 #include <iterator>
 #include <iomanip>
 #include <string>
-#include <cerrno>
 #include <utility>
-#include "BigInt.hpp";
+#include <unordered_set>
+#include <unordered_map>
+#include <set>
 
 /*Op Codes*/
 constexpr auto ADD = 1;      //#1 adds numbers pos[op[1]]&[op[2]] stores valuein pos[op[3]];
@@ -48,11 +54,6 @@ void loadMemory(std::vector<long long>& m) {
         dat >> dd;
         m.push_back(dd);
     }
-    long long endprog = 0;
-    int size = m.size();
-    for (int i = 0; i < size; i++) {
-        m.push_back(endprog);
-    }
 }
 
 /*replaces position 1 and 2 with values noun verb 
@@ -64,11 +65,11 @@ void alarmState(std::vector<long long>& d, int &noun, int& verb) {
     d[2] = verb;
 }
 
-BigInt add1(long long & a, long long & b) {
+long long add1(long long & a, long long & b) {
     return a + b;
 }
 
-BigInt mul2(long long& a, long long& b) {
+long long mul2(long long& a, long long& b) {
     return a * b;
 }
 
@@ -76,7 +77,7 @@ BigInt mul2(long long& a, long long& b) {
         with corresponding index*/
 std::vector<long long > paramters(long long& opcode) {
     std::vector<long long> instMode;
-    instMode.push_back(opcode % 10);
+    instMode.push_back(opcode % 100);
     for (int i = 1; i < 4; i++) {
         int pmode = std::pow(10, (i + 1));
         instMode.push_back(opcode / pmode % 10);
@@ -84,10 +85,38 @@ std::vector<long long > paramters(long long& opcode) {
     return instMode;
 }
 
+/*read parameter mode*/
+long long read(std::vector<long long>& mem, long long ip, long long mode, long long& rBase) {
+    if (mode == 0) {
+        auto addr = mem[ip];
+        return mem[addr];
+    }
+    if (mode == 1) {
+        return mem[ip];
+    }
+    if (mode == 2) {
+        auto addr = mem[ip] + rBase;
+        return mem[addr];
+    }
+}
+
+void write(std::vector<long long>& mem, long long ip, long long mode, long long value, long long& rBase) {
+    if (mode == 0) {
+        auto addr = mem[ip];
+        mem[addr] = value;
+    }
+    if (mode == 2) {
+        auto addr = mem[ip] + rBase;
+        mem[addr] = value;
+    }
+}
+
 /*intcode conputer processses vector data that is loaded in
- int computer memory - provide data vector that is already
- stored in memory */
-long long process(std::vector<long long>& data) {
+   int computer memory - provide <long long> vector that is already
+   stored in memory 
+   input = 1 or 2 based on part of puzzle input
+   */
+long long process(std::vector<long long>& data, long long input) {
     std::vector<int> opsize = {
              0, 4,  //[0]99-halt//[1]-add 
              4, 2,  //[2]-mul  //[3]-single input
@@ -95,86 +124,82 @@ long long process(std::vector<long long>& data) {
              3, 4,  //[6]-jump flase//[7]-compare is less
              4, 2   //[8]-equals //[9]-relative
     };
-    long long op;
+    long long op=0;
     long long i=0;
     long long relBase = 0;
-    BigInt ta;
-    BigInt tt;
-    int in=0;
-    long long di, dii, diii;
-    while (i < data.size()) {
+    long long arg1;
+    long long arg2;
+    long long Output = 0;
+    data.resize(data.size() * 10);
+
+    while (op != 99) {
         op = data[i];
         std::vector<long long> pval = paramters(op);
         op = pval[0];
         switch (op) {
         case ADD:
-            ta = add1(data[pval[1] ? i + 1 : data[i + 1]], data[pval[2] ? i + 2 : data[i + 2]]);
-            data[data[i + 3]] = ta.to_long_long();
+            arg1 = read(data, i+1, pval[1], relBase);
+            arg2 = read(data, i+2 , pval[2], relBase);
+            write(data, i+opsize[op]-1, pval[3], add1(arg1, arg2), relBase);          
             i += opsize[op];
             break;
         case MUL:
-            tt = mul2(data[pval[1] ? i + 1 : data[i + 1]], data[pval[2] ? i + 2 : data[i + 2]]);
-            data[data[i + 3]] = tt.to_long_long();
+            arg1 = read(data, i+1, pval[1], relBase);
+            arg2 = read(data, i+2, pval[2], relBase);
+            write(data, i+opsize[op]-1, pval[3], mul2(arg1, arg2), relBase);
             i += opsize[op];
             break;
         case INPUT:
-            std::cout << "input TEST ID:";
-            std::cin >> in;
-            data[data[i + 1]] = in;
+            long long in;
+            in = input;
+            write(data, i+opsize[op]-1, pval[1], in, relBase);
             i += opsize[op];
             break;
         case OUTPUT:
-            if (data[i + opsize[4]] == 99) {
-                return data[data[i+1]];
-            }
+            Output = read(data, i+1, pval[1],relBase);
+            std::cout << Output << ", ";
             i += opsize[op];
             break;
         case JPX:
-            if (data[pval[1] ? i + 1 : data[i + 1]] != 0) {
-                i = data[pval[2] ? i + 2 : data[i + 2]];
-            } else {
-                i += opsize[op];
-            }
+            arg1 = read(data, i + 1, pval[1], relBase);
+            arg2 = read(data, i + 2, pval[2], relBase);
+            i = arg1 == 0 ? i+opsize[op] : arg2;
             break;
         case JNPX:
-            if (data[pval[1] ? i + 1 : data[i + 1]] == 0) {
-                i = data[pval[2] ? i + 2 : data[i + 2]];
-            } else {
-                i += opsize[op];
-            }
+            arg1 = read(data, i + 1, pval[1], relBase);
+            arg2 = read(data, i + 2, pval[2], relBase);
+            i = arg1 != 0 ? i + opsize[op] : arg2;
             break;
         case LESSTHAN:
-            if ((data[pval[1] ? i + 1 : data[i + 1]]) < (data[pval[2] ? i + 2 : data[i + 2]])) {
-                data[data[i + 3]] = 1;
-            }
-            else {
-                data[data[i + 3]] = 0;
-            }
+            arg1 = read(data, i + 1, pval[1], relBase);
+            arg2 = read(data, i + 2, pval[2], relBase);
+            write(data, i + opsize[op] - 1, pval[3], arg1 < arg2 ? 1 : 0, relBase);
             i += opsize[op];
             break;
         case EQUAL:
-            if ((data[pval[1] ? i + 1 : data[i + 1]]) == (data[pval[2] ? i + 2 : data[i + 2]])) {
-                data[data[i + 2]] = 1;
-            }
-            else {
-                data[data[i + 2]] = 0;
-            }
+            arg1 = read(data, i + 1, pval[1], relBase);
+            arg2 = read(data, i + 2, pval[2], relBase);
+            write(data, i + opsize[op] - 1, pval[3], arg1 == arg2 ? 1 : 0, relBase);
             i += opsize[op];
             break;
         case RELATIVE:
-            relBase += pval[1];
+            arg1 = read(data, i + 1, pval[1], relBase);
+            relBase += arg1;
             i += opsize[op];
             break;
         case HALT:
-            i = data.size()+1;
+            if (Output == 0)
+                return data[0];
+            else return Output;
             break;
         default:
-            std::cout << "opcode is:" << op << std::endl;
+            std::cout << "opcode is i:op data[i]" << i << ":" << op << " " << data[i] << std::endl;
             i += 4;
             break;
         }
+
     }
-    return data[0];
+    return Output;
 }
 
 
@@ -187,9 +212,24 @@ int main() {
     long long testresult = test * test2;
     std::cout << "test result is :" << testresult << std::endl;
 
-    //std::cout << "part 1 output at p[0]" << std::endl;
+    
+    //std::vector<long long> test1 = { 109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99 };
+    //std::cout << "Testing intcode computer BOOST keycode: part 1: " << process(test1) << std::endl;
+
+    //std::vector<long long> tester2 = { 1102,34915192,34915192,7,4,7,99,0 };
+    //std::cout << "Testing intcode computer BOOST keycode: part 1: " << process(tester2) << std::endl;
+
+    //std::vector<long long> tester3 = { 104,1125899906842624,99 };
+    //std::cout << "Testing intcode computer BOOST keycode: part 1: " << process(tester3) << std::endl;
+
+    std::cout << "part 1 input 1 - part 2 input 2" << std::endl;
     std::vector<long long> dt = maindata;
-    std::cout << "Testing intcode computer BOOST keycode: part 1: " << process(dt) << std::endl;
+    long long part1 = process(dt, 1);
+    std::cout << std::endl;
+
+    std::cout << "part 2 input 2" << std::endl;
+    std::vector<long long> dt2 = maindata;
+    long long part2 = process(dt2, 2);
     std::cout << std::endl;
 
     //std::vector<long long> dt2 = maindata;
