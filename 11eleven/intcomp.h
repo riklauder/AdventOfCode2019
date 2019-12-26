@@ -27,10 +27,17 @@ constexpr auto EQUAL = 8;    //#8 if op[1]==op[2] pos[op[3]] = 1 else 0;
 constexpr auto RELATIVE = 9; //#9 - sets relative base using offset op[1]   
 constexpr auto HALT = 99;    //#99 - halt - program finished;
 
-#include <cstdio>
+//#include <cstdio>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <iterator>
+#include <string>
 #include <queue>
 #include <vector>
-#pragma warning(disable : 4996)
+#include <charconv>
+#include <utility>
+//#pragma warning(disable : 4996)
 
 namespace vh {
 
@@ -41,14 +48,17 @@ namespace vh {
         std::vector<long long> out;
         long long ip = 0, rel = 0;
 
-        bool load(const char* filename) {
-            FILE* f = fopen(filename, "r");
-            if (f == nullptr)
+        bool load(std::string filename) {
+            std::string s;
+            std::ifstream file(filename);
+            if (!file)
                 return false;
-            long long tmp;
-            while (fscanf(f, "%lld,", &tmp) == 1)
-                mem.push_back(tmp);
-            fclose(f);
+            while (getline(file, s, ',')) {
+                long long dd;
+                std::stringstream dat(s);
+                dat >> dd;
+                mem.push_back(dd);
+            }
             if (mem.size() < 128 * 1024)
                 mem.resize(128 * 1024, 0ll);
             out.reserve(16);

@@ -138,6 +138,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="headers.h" />
     <ClInclude Include="intcomp.h" />
   </ItemGroup>
   <ItemGroup>
